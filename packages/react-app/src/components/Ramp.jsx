@@ -3,10 +3,53 @@ import { Button, Modal, Divider } from "antd";
 import { DollarCircleOutlined } from "@ant-design/icons";
 import { RampInstantSDK } from "@ramp-network/ramp-instant-sdk";
 
+// added display of 0 if price={price} is not provided
+
+/*
+  ~ What it does? ~
+
+  Displays current ETH price and gives options to buy ETH through Wyre/Ramp/Coinbase
+                            or get through Rinkeby/Ropsten/Kovan/Goerli
+
+  ~ How can I use? ~
+
+  <Ramp 
+    price={price} 
+    address={address}
+  />
+
+  ~ Features ~
+
+  - Ramp opens directly in the application, component uses RampInstantSDK
+  - Provide price={price} and current ETH price will be displayed
+  - Provide address={address} and your address will be pasted into Wyre/Ramp instantly
+*/
+
 export default function Ramp(props) {
   const [modalUp, setModalUp] = useState("down");
 
   const type = "default";
+
+  let allFaucets = []
+  for(let n in props.networks){
+    if(props.networks[n].chainId!=31337&&props.networks[n].chainId!=1){
+      allFaucets.push(
+        <p key={props.networks[n].id}>
+          <Button
+            style={{color:props.networks[n].color}}
+            type={type}
+            size="large"
+            shape="round"
+            onClick={() => {
+              window.open(props.networks[n].faucet);
+            }}
+          >
+            {props.networks[n].name}
+          </Button>
+        </p>
+      )
+    }
+  }
 
   return (
     <div>
@@ -17,7 +60,7 @@ export default function Ramp(props) {
           setModalUp("up");
         }}
       >
-        <DollarCircleOutlined style={{ color: "#52c41a" }} /> {props.price.toFixed(2)}
+        <DollarCircleOutlined style={{ color: "#52c41a" }} /> {typeof props.price == "undefined" ? 0 : props.price.toFixed(2)}
       </Button>
       <Modal
         title="Buy ETH"
@@ -46,7 +89,7 @@ export default function Ramp(props) {
             }}
           >
             <span style={{ paddingRight: 15 }} role="img">
-              🇺🇸
+              <span role="img" aria-label="flag-us">🇺🇸</span>
             </span>
             Wyre
           </Button>
@@ -70,7 +113,7 @@ export default function Ramp(props) {
             }}
           >
             <span style={{ paddingRight: 15 }} role="img">
-              🇬🇧
+            <span role="img" aria-label="flag-gb">🇬🇧</span>
             </span>
             Ramp
           </Button>
@@ -85,7 +128,7 @@ export default function Ramp(props) {
               window.open("https://www.coinbase.com/buy-ethereum");
             }}
           >
-            <span style={{ paddingRight: 15 }} role="img">
+            <span style={{ paddingRight: 15 }} role="img" aria-label="bank">
               🏦
             </span>
             Coinbase
@@ -94,69 +137,10 @@ export default function Ramp(props) {
 
         <Divider />
 
-        <p>
-          <Button
-            type={type}
-            size="large"
-            shape="round"
-            onClick={() => {
-              window.open("https://faucet.rinkeby.io/");
-            }}
-          >
-            <span style={{ paddingRight: 15 }} role="img" aria-label="rinkeby">
-              🟨
-            </span>{" "}
-            Rinkeby
-          </Button>
-        </p>
+        <h2>Testnet ETH</h2>
 
-        <p>
-          <Button
-            type={type}
-            size="large"
-            shape="round"
-            onClick={() => {
-              window.open("https://faucet.ropsten.be/");
-            }}
-          >
-            <span style={{ paddingRight: 15 }} role="img" aria-label="ropsten">
-              🟠
-            </span>{" "}
-            Ropsten
-          </Button>
-        </p>
+        {allFaucets}
 
-        <p>
-          <Button
-            type={type}
-            size="large"
-            shape="round"
-            onClick={() => {
-              window.open("https://faucet.kovan.network/");
-            }}
-          >
-            <span style={{ paddingRight: 15 }} role="img" aria-label="kovan">
-              🟣
-            </span>{" "}
-            Kovan
-          </Button>
-        </p>
-
-        <p>
-          <Button
-            type={type}
-            size="large"
-            shape="round"
-            onClick={() => {
-              window.open("https://faucet.goerli.mudit.blog/");
-            }}
-          >
-            <span style={{ paddingRight: 15 }} role="img" aria-label="goerli">
-              🔵
-            </span>{" "}
-            Goerli
-          </Button>
-        </p>
       </Modal>
     </div>
   );
