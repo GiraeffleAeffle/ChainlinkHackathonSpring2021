@@ -34,7 +34,7 @@ contract YourContract is ChainlinkClient {
         Chainlink.Request memory request = buildChainlinkRequest(jobId, address(this), this.fulfill.selector);
         
         // Set the URL to perform the GET request on
-        request.add("get", "https://api.openweathermap.org/data/2.5/air_pollution?lat=39.2596&lon=-119.8138&appid=cb30acd45ef4590cf6307a4fa8940cb7");
+        request.add("get", "https://api.openweathermap.org/data/2.5/air_pollution?lat=39.2596&lon=-119.8138&appid=XXXX");
         
         // Set the path to find the desired data in the API response, where the response format is:
         request.add("path", "list.0.components.co");
