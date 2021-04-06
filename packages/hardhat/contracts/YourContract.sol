@@ -3,18 +3,23 @@
 pragma solidity ^0.6.0;
 
 import "@chainlink/contracts/src/v0.6/ChainlinkClient.sol";
+import "hardhat/console.sol";
 
-contract YourContract is ChainlinkClient {
-  
-    uint256[] public volume;
-    
+contract YourContract is ChainlinkClient{
+
     address private oracle;
     bytes32 private jobId;
     uint256 private fee;
-    address[] public stakers;
+  
+    uint256[] public volume;
+    address payable[] public stakerReg;
+    address public stakingpool = 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4;
+    uint256[] public oracleData;
+    uint256[] public relativeGHG;
 
     mapping(address => uint256) balances;
-    mapping(address => string) addrAPI;
+    mapping(address => uint256[] ) dataToAddress;
+    mapping(address => bool) stakers;
     
     /**
      * Network: Kovan
@@ -22,19 +27,22 @@ contract YourContract is ChainlinkClient {
      * Chainlink - 29fa9aa13bf1468788b7cc4a500a45b8
      * Fee: 0.1 LINK
      */
+
     constructor() public {
-        setPublicChainlinkToken();
-        oracle = 0xAA1DC356dc4B18f30C347798FD5379F3D77ABC5b;
-        jobId = "c7dd72ca14b44f0c9b6cfcd4b7ec0a2c";
-        fee = 0.1 * 10 ** 18; // 0.1 LINK
+      setPublicChainlinkToken();
+      oracle = 0xAA1DC356dc4B18f30C347798FD5379F3D77ABC5b;
+      jobId = "c7dd72ca14b44f0c9b6cfcd4b7ec0a2c";
+      fee = 0.1 * 10 ** 18; // 0.1 LINK
     }
     
-    /**
+
+     /**
      * Create a Chainlink request to retrieve API response, find the target
      * data, then multiply by 1000000000000000000 (to remove decimal places from data).
      */
     function requestVolumeData(string memory _API) public returns (bytes32 requestId) 
     {
+        require(stakers[msg.sender], "Not a staker");
         Chainlink.Request memory request = buildChainlinkRequest(jobId, address(this), this.fulfill.selector);
         
         // Set the URL to perform the GET request on
@@ -54,9 +62,10 @@ contract YourContract is ChainlinkClient {
     /**
      * Receive the response in the form of uint256
      */ 
-    function fulfill(bytes32 _requestId, uint256 _volume) public recordChainlinkFulfillment(_requestId)
+    function fulfill(bytes32 _requestId, uint256 _data) public recordChainlinkFulfillment(_requestId)
     {
-        volume.push(_volume);
+      dataToAddress[msg.sender].push(_data); // DOESNT WORK BECAUSE IT GETS CALLED BY ANOTHER ADDRESS
+      relativeGHG.push(0);
     }
     
     /**
@@ -74,39 +83,59 @@ contract YourContract is ChainlinkClient {
     public
     payable {
       require(msg.value > 0, "Staking amount must be higher than 0");
-      stakers.push(msg.sender);
-      balances[0x9B38A28C1BfCC5B41D510E336cDbed35a46f0beb] += msg.value; //should normally be msg.sender but easier to put it together into stakingpool
+      stakers[msg.sender] = true;
+      stakerReg.push(msg.sender);
+      balances[stakingpool] += msg.value; //should normally be msg.sender but easier to put it together into stakingpool
     }
 
     function balanceOf(address _user) public view returns(uint256) {
       return balances[_user];
     }
 
-    function setAPI(string memory _API) public {
-      addrAPI[msg.sender] = _API;
+    function setData(uint256 _data) public {
+        require(stakers[msg.sender], "Not a staker");
+        dataToAddress[msg.sender].push(_data);
+        relativeGHG.push(0);
     }
-
-    function getGHG(string memory _API1, string memory _API2) public {
-      require(keccak256(abi.encodePacked(_API1)) == keccak256(abi.encodePacked(_API2)), "You can't use the same API. Please change");
-      requestVolumeData(_API1);
-      requestVolumeData(_API2);
+    
+    function getData() public view returns (uint256[] memory) {
+        return dataToAddress[msg.sender];
     }
+    
+    function getRelChange() public {
+        for (uint8 ii= 0;ii<stakerReg.length;ii++) {
+            for (uint8 jj=0; jj<dataToAddress[stakerReg[ii]].length;jj++) {
+                if (jj == 0) {
+                    relativeGHG[ii] = dataToAddress[stakerReg[ii]][jj]; // expecting that second value is lower than first
+                } else {
+                    relativeGHG[ii] -= dataToAddress[stakerReg[ii]][jj]; // expecting that second value is lower than first    
+                }
+            }
+        }
+    }
+    
 
-    function compareGHG() public returns(uint256){
-      require(volume[0] != 0 && volume[1] != 0, "Wait for Oracle to answer");
-      if(volume[0] < volume[1]){
+    function compareGHG() public{
+      require(relativeGHG[0] != 0 && relativeGHG[1] != 0, "Wait for Oracle to answer");
+      console.log(relativeGHG[0]);
+      console.log(relativeGHG[1]);
+      if(relativeGHG[0] > relativeGHG[1]){
         //company1 wins
-        balances[stakers[0]] += balanceOf(0x9B38A28C1BfCC5B41D510E336cDbed35a46f0beb);
-        balances[0x9B38A28C1BfCC5B41D510E336cDbed35a46f0beb] -= balanceOf(0x9B38A28C1BfCC5B41D510E336cDbed35a46f0beb);
-        return balances[stakers[0]];
-      } else if(volume[0] > volume[1]){
+        console.log(stakerReg[0]);
+        console.log(balances[stakerReg[0]]);
+        balances[stakerReg[0]] += balanceOf(stakingpool);
+        balances[stakingpool] -= balanceOf(stakingpool);
+        msg.sender.transfer(balanceOf(stakerReg[0]));
+      } else if(relativeGHG[0] < relativeGHG[1]){
         //company2 wins
-        balances[stakers[1]] += balanceOf(0x9B38A28C1BfCC5B41D510E336cDbed35a46f0beb);
-        balances[0x9B38A28C1BfCC5B41D510E336cDbed35a46f0beb] -= balanceOf(0x9B38A28C1BfCC5B41D510E336cDbed35a46f0beb);
-        return balances[stakers[1]];
+        console.log(stakerReg[1]);
+        console.log(balances[stakerReg[1]]);
+        balances[stakerReg[1]] += balanceOf(stakingpool);
+        balances[stakingpool] -= balanceOf(stakingpool);
+        msg.sender.transfer(balanceOf(stakerReg[0]));
       } else {
         //do nothing
-        return balances[0x9B38A28C1BfCC5B41D510E336cDbed35a46f0beb];
       }
     }
+
 }
