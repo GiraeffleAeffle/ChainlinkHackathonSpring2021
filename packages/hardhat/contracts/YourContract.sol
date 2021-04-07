@@ -11,12 +11,10 @@ contract YourContract is ChainlinkClient{
     bytes32 private jobId;
     uint256 private fee;
   
-    uint256[] public volume;
     address payable[] public stakerReg;
     address public stakingpool = 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4;
     uint256[] public oracleData;
     uint256[] public relativeGHG;
-    address public response;
     address[] public requesters;
 
     mapping(address => uint256) balances;
