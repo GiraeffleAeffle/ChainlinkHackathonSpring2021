@@ -6,7 +6,7 @@ import "@chainlink/contracts/src/v0.6/ChainlinkClient.sol";
 import "hardhat/console.sol";
 
 contract YourContract is ChainlinkClient{
-
+    
     address private oracle;
     bytes32 private jobId;
     uint256 private fee;
@@ -16,19 +16,28 @@ contract YourContract is ChainlinkClient{
     address public stakingpool = 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4;
     uint256[] public oracleData;
     uint256[] public relativeGHG;
+    address public response;
+    address[] public requesters;
 
     mapping(address => uint256) balances;
     mapping(address => uint256[] ) dataToAddress;
     mapping(address => bool) stakers;
     
+    //EVENTS
+
+    event RequesterToData(address indexed _requester, uint256 indexed _oracleData);
+    event SetData(address indexed _requester, uint256 indexed _data);
+    event GetRelChange(uint256 _relChange);
+    event PayoutTo(address _winner, uint _amount);
+
     /**
      * Network: Kovan
      * Chainlink - 0x2f90A6D021db21e1B2A077c5a37B3C7E75D15b7e
      * Chainlink - 29fa9aa13bf1468788b7cc4a500a45b8
      * Fee: 0.1 LINK
      */
-
-    constructor() public {
+     
+     constructor() public {
       setPublicChainlinkToken();
       oracle = 0xAA1DC356dc4B18f30C347798FD5379F3D77ABC5b;
       jobId = "c7dd72ca14b44f0c9b6cfcd4b7ec0a2c";
@@ -43,6 +52,7 @@ contract YourContract is ChainlinkClient{
     function requestVolumeData(string memory _API) public returns (bytes32 requestId) 
     {
         require(stakers[msg.sender], "Not a staker");
+        requesters.push(msg.sender);
         Chainlink.Request memory request = buildChainlinkRequest(jobId, address(this), this.fulfill.selector);
         
         // Set the URL to perform the GET request on
@@ -64,8 +74,19 @@ contract YourContract is ChainlinkClient{
      */ 
     function fulfill(bytes32 _requestId, uint256 _data) public recordChainlinkFulfillment(_requestId)
     {
-      dataToAddress[msg.sender].push(_data); // DOESNT WORK BECAUSE IT GETS CALLED BY ANOTHER ADDRESS
+      oracleData.push(_data);
       relativeGHG.push(0);
+    }
+    
+    
+    function requesterToData() public {
+        require(requesters.length == oracleData.length);
+        for (uint256 ii = 0; ii < requesters.length; ii++) {
+            dataToAddress[requesters[ii]].push(oracleData[ii]);
+            emit RequesterToData(_requesters[ii], _oracleData[ii]);
+        }
+        delete requesters;
+        delete oracleData;
     }
     
     /**
@@ -79,6 +100,38 @@ contract YourContract is ChainlinkClient{
         require(linkToken.transfer(msg.sender, linkToken.balanceOf(address(this))), "Unable to transfer");
     }
 
+    /**
+    * Set "oracle" data. 
+    * Just for testing purpose without the need to use an oracle.
+     */
+    function setData(uint256 _data) public {
+      dataToAddress[msg.sender] = _data;
+      SetData(msg.sender, _Data);
+    }
+
+    /**
+    * Get data. Only with caller address.
+     */
+    function getData() public view returns (uint256[] memory) {
+        return dataToAddress[msg.sender];
+    }
+    
+    
+    function getRelChange() public {
+        for (uint8 ii= 0;ii<stakerReg.length;ii++) {
+            for (uint8 jj=0; jj<dataToAddress[stakerReg[ii]].length;jj++) {
+                if (jj == 0) {
+                    relativeGHG[ii] = dataToAddress[stakerReg[ii]][jj]; // expecting that second value is lower than first
+                    emit GetRelChange(relativeGHG[ii]);
+                } else {
+                    relativeGHG[ii] -= dataToAddress[stakerReg[ii]][jj]; // expecting that second value is lower than first
+                    emit GetRelChange(relativeGHG[ii]);    
+                }
+            }
+        }
+    }
+    
+    
     function stake() 
     public
     payable {
@@ -92,50 +145,25 @@ contract YourContract is ChainlinkClient{
       return balances[_user];
     }
 
-    function setData(uint256 _data) public {
-        require(stakers[msg.sender], "Not a staker");
-        dataToAddress[msg.sender].push(_data);
-        relativeGHG.push(0);
-    }
-    
-    function getData() public view returns (uint256[] memory) {
-        return dataToAddress[msg.sender];
-    }
-    
-    function getRelChange() public {
-        for (uint8 ii= 0;ii<stakerReg.length;ii++) {
-            for (uint8 jj=0; jj<dataToAddress[stakerReg[ii]].length;jj++) {
-                if (jj == 0) {
-                    relativeGHG[ii] = dataToAddress[stakerReg[ii]][jj]; // expecting that second value is lower than first
-                } else {
-                    relativeGHG[ii] -= dataToAddress[stakerReg[ii]][jj]; // expecting that second value is lower than first    
-                }
-            }
-        }
-    }
-    
-
     function compareGHG() public{
       require(relativeGHG[0] != 0 && relativeGHG[1] != 0, "Wait for Oracle to answer");
-      console.log(relativeGHG[0]);
-      console.log(relativeGHG[1]);
-      if(relativeGHG[0] > relativeGHG[1]){
+      if(relativeGHG[0] > relativeGHG[1]){ //has a higher relative negative impact on GHG
         //company1 wins
-        console.log(stakerReg[0]);
-        console.log(balances[stakerReg[0]]);
         balances[stakerReg[0]] += balanceOf(stakingpool);
         balances[stakingpool] -= balanceOf(stakingpool);
-        msg.sender.transfer(balanceOf(stakerReg[0]));
+        stakerReg[0].transfer(balanceOf(stakerReg[0]));
+        emit PayoutTo(stakerReg[0], balanceOf(stakerReg[0]) );
+        balances[stakerReg[1]] -= balanceOf(stakerReg[1]);
       } else if(relativeGHG[0] < relativeGHG[1]){
         //company2 wins
-        console.log(stakerReg[1]);
-        console.log(balances[stakerReg[1]]);
         balances[stakerReg[1]] += balanceOf(stakingpool);
         balances[stakingpool] -= balanceOf(stakingpool);
-        msg.sender.transfer(balanceOf(stakerReg[0]));
+        stakerReg[1].transfer(balanceOf(stakerReg[1]));
+        emit PayoutTo(stakerReg[1], balanceOf(stakerReg[1]) );
+        balances[stakerReg[1]] -= balanceOf(stakerReg[1]);
       } else {
         //do nothing
       }
     }
-
 }
+
