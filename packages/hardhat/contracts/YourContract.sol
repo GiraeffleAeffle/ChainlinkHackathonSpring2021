@@ -2,12 +2,13 @@ pragma solidity >=0.6 <0.9.0;
 //SPDX-License-Identifier: MIT
 
 import "@chainlink/contracts/src/v0.6/ChainlinkClient.sol";
-import "hardhat/console.sol";
-import "@aave/protocol-v2/contracts/misc/interfaces/IWETHGateway.sol";
-import "@aave/protocol-v2/contracts/interfaces/IAToken.sol";
+import "@aave/protocol-v2/contracts/misc/WETHGateway.sol";
+//import "@aave/protocol-v2/contracts/misc/interfaces/IWETHGateway.sol";
+//import "@aave/protocol-v2/contracts/interfaces/IAToken.sol";
+//import "hardhat/console.sol";
 
 
-abstract contract YourContract is ChainlinkClient, IWETHGateway, IAToken{
+contract YourContract is ChainlinkClient, WETHGateway{
     
     address private oracle;
     bytes32 private jobId;
@@ -40,13 +41,21 @@ abstract contract YourContract is ChainlinkClient, IWETHGateway, IAToken{
      * Fee: 0.1 LINK
      */
      
-     constructor() public {
-      setPublicChainlinkToken();
-      oracle = 0xAA1DC356dc4B18f30C347798FD5379F3D77ABC5b;
-      jobId = "c7dd72ca14b44f0c9b6cfcd4b7ec0a2c";
-      fee = 0.1 * 10 ** 18; // 0.1 LINK
-    }
+      // --- KOVAN --
+    //IWETHGateway gateway = IWETHGateway(0xf8aC10E65F2073460aAD5f28E1EABE807DC287CF);
+    //IAToken aWETH = IAToken(0x87b1f4cf9BD63f7BBD3eE1aD04E8F52540349347);
     
+    constructor(address weth, address pool) public {
+    ILendingPool poolInstance = ILendingPool(pool);
+    WETH = IWETH(weth);
+    POOL = poolInstance;
+    aWETH = IAToken(poolInstance.getReserveData(weth).aTokenAddress);
+    IWETH(weth).approve(pool, uint256(-1));
+    setPublicChainlinkToken();
+    oracle = 0xAA1DC356dc4B18f30C347798FD5379F3D77ABC5b;
+    jobId = "c7dd72ca14b44f0c9b6cfcd4b7ec0a2c";
+    fee = 0.1 * 10 ** 18; // 0.1 LINK
+  }
 
      /**
      * Create a Chainlink request to retrieve API response, find the target
@@ -130,10 +139,9 @@ abstract contract YourContract is ChainlinkClient, IWETHGateway, IAToken{
       require(msg.value > 0, "Staking amount must be higher than 0");
       stakers[msg.sender] = true;
       stakerReg.push(msg.sender);
-      balances[stakingpool] += msg.value; //should normally be msg.sender but easier to put it together into stakingpool
+      //depositETH{value: msg.value}(address(this), 0); //Doesnt work...why?
+      balances[msg.sender] += aWETH.balanceOf(msg.sender);
     }
-
-
  /*
     * Get the relative Change of the GHG values.
     * TODO: Set one starting value and take the average of the following. Eventually needs to be signed integer
