@@ -1,6 +1,5 @@
-// This example code is designed to quickly deploy an example contract using Remix.
-
 pragma solidity >=0.6 <0.9.0;
+//SPDX-License-Identifier: MIT
 
 import "@chainlink/contracts/src/v0.6/ChainlinkClient.sol";
 import "hardhat/console.sol";

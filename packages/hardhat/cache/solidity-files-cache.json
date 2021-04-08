@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/max/Code/scaffold-eth/packages/hardhat/contracts/YourContract.sol": {
-      "lastModificationDate": 1617881422742,
-      "contentHash": "f62d872faba642a60be8022b50bf8b11",
+      "lastModificationDate": 1617882502821,
+      "contentHash": "0a59e4a7e1e1c933e34205647037f475",
       "sourceName": "contracts/YourContract.sol",
       "solcConfig": {
         "version": "0.6.12",
