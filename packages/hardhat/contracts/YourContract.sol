@@ -8,7 +8,7 @@ import "@aave/protocol-v2/contracts/misc/interfaces/IWETHGateway.sol";
 import "@aave/protocol-v2/contracts/interfaces/IAToken.sol";
 
 
-contract YourContract is ChainlinkClient, IWETHGateway, IAToken{
+abstract contract YourContract is ChainlinkClient, IWETHGateway, IAToken{
     
     address private oracle;
     bytes32 private jobId;
