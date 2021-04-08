@@ -1,12 +1,14 @@
 // This example code is designed to quickly deploy an example contract using Remix.
 
-pragma solidity ^0.6.0;
+pragma solidity >=0.6 <0.9.0;
 
 import "@chainlink/contracts/src/v0.6/ChainlinkClient.sol";
 import "hardhat/console.sol";
-import "@aave/contracts/misc/WETHGateway.sol";
+import "@aave/protocol-v2/contracts/misc/interfaces/IWETHGateway.sol";
+import "@aave/protocol-v2/contracts/interfaces/IAToken.sol";
 
-contract YourContract is ChainlinkClient, WETHGateway{
+
+contract YourContract is ChainlinkClient, IWETHGateway, IAToken{
     
     address private oracle;
     bytes32 private jobId;
@@ -15,7 +17,6 @@ contract YourContract is ChainlinkClient, WETHGateway{
     address payable[] public stakerReg;
     address public stakingpool = 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4;
     uint256[] public oracleData;
-    address[] public requesters;
     uint256[] public relativeGHG;
     uint256 public averageRelGHGV;
     address[] public requesters;
@@ -88,7 +89,7 @@ contract YourContract is ChainlinkClient, WETHGateway{
         require(requesters.length == oracleData.length);
         for (uint256 ii = 0; ii < requesters.length; ii++) {
             dataToAddress[requesters[ii]].push(oracleData[ii]);
-            emit RequesterToData(_requesters[ii], _oracleData[ii]);
+            emit RequesterToData(requesters[ii], oracleData[ii]);
         }
         delete requesters;
         delete oracleData;
@@ -110,8 +111,8 @@ contract YourContract is ChainlinkClient, WETHGateway{
     * Just for testing purpose without the need to use an oracle.
      */
     function setData(uint256 _data) public {
-      dataToAddress[msg.sender] = _data;
-      SetData(msg.sender, _Data);
+      dataToAddress[msg.sender].push(_data);
+      SetData(msg.sender, _data);
     }
 
     /**
@@ -131,13 +132,6 @@ contract YourContract is ChainlinkClient, WETHGateway{
       stakers[msg.sender] = true;
       stakerReg.push(msg.sender);
       balances[stakingpool] += msg.value; //should normally be msg.sender but easier to put it together into stakingpool
-    }
-
-    /**
-    * Get balance of address
-     */
-    function balanceOf(address _user) public view returns(uint256) {
-      return balances[_user];
     }
 
 
@@ -169,28 +163,30 @@ contract YourContract is ChainlinkClient, WETHGateway{
     /*
     * If your relative GHG reduction is over the average value you get a reward
     * paid by the ones under the average. 
+    * TODO: Events
     */
     function payOrGetPaid() public {
         averageRelGHG();
         for(uint256 jj=0; jj<relativeGHG.length;jj++) {
-            if(relativeGHG[jj] < relativeGHGV) {
+            if(relativeGHG[jj] < averageRelGHGV) {
                 rewarded.push(stakerReg[jj]);
             }  else {
                 penalized.push(stakerReg[jj]);
-                balance[stakingpool] += balance[penalized[jj]];
-                balance[penalized[jj]] = 0;
+                balances[stakingpool] += balances[penalized[jj]];
+                balances[penalized[jj]] = 0;
             }
         }
-        for(uint256 ii=0; jj<rewarded.length;ii++) {
-            balance[rewarded[ii]] += balance[stakingpool]/rewarded.length;
+        for(uint256 ii=0; ii<rewarded.length;ii++) {
+            balances[rewarded[ii]] += balances[stakingpool]/rewarded.length;
             //send eth to address ?
         }
-        balance[stakingpool] = 0;
+        balances[stakingpool] = 0;
     }
     
     /**
     * Compare GHG values and send them to the winner address
     * TODO: Collect penalties from the others to pay the winner
+    * TODO: Events
     */
     function compareGHG() public{
       uint256 maxValue = 0;
@@ -208,7 +204,7 @@ contract YourContract is ChainlinkClient, WETHGateway{
               }
           }
       }
-      stakerReg[position].transfer(balanceOf(stakingpool));
+      stakerReg[position].transfer(balances[stakingpool]);
     }
 }
 
