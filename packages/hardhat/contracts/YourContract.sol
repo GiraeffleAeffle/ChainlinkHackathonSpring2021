@@ -4,8 +4,9 @@ pragma solidity ^0.6.0;
 
 import "@chainlink/contracts/src/v0.6/ChainlinkClient.sol";
 import "hardhat/console.sol";
+import "@aave/contracts/misc/WETHGateway.sol";
 
-contract YourContract is ChainlinkClient{
+contract YourContract is ChainlinkClient, WETHGateway{
     
     address private oracle;
     bytes32 private jobId;
@@ -14,8 +15,12 @@ contract YourContract is ChainlinkClient{
     address payable[] public stakerReg;
     address public stakingpool = 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4;
     uint256[] public oracleData;
-    uint256[] public relativeGHG;
     address[] public requesters;
+    uint256[] public relativeGHG;
+    uint256 public averageRelGHGV;
+    address[] public requesters;
+    address[] public penalized;
+    address[] public rewarded;
 
     mapping(address => uint256) balances;
     mapping(address => uint256[] ) dataToAddress;
@@ -76,7 +81,9 @@ contract YourContract is ChainlinkClient{
       relativeGHG.push(0);
     }
     
-    
+    /**
+    * Map oracleData to requesters
+     */
     function requesterToData() public {
         require(requesters.length == oracleData.length);
         for (uint256 ii = 0; ii < requesters.length; ii++) {
@@ -114,7 +121,30 @@ contract YourContract is ChainlinkClient{
         return dataToAddress[msg.sender];
     }
     
-    
+    /**
+    * Stake ETH
+     */
+    function stake() 
+    public
+    payable {
+      require(msg.value > 0, "Staking amount must be higher than 0");
+      stakers[msg.sender] = true;
+      stakerReg.push(msg.sender);
+      balances[stakingpool] += msg.value; //should normally be msg.sender but easier to put it together into stakingpool
+    }
+
+    /**
+    * Get balance of address
+     */
+    function balanceOf(address _user) public view returns(uint256) {
+      return balances[_user];
+    }
+
+
+ /*
+    * Get the relative Change of the GHG values.
+    * TODO: Set one starting value and take the average of the following. Eventually needs to be signed integer
+    */
     function getRelChange() public {
         for (uint8 ii= 0;ii<stakerReg.length;ii++) {
             for (uint8 jj=0; jj<dataToAddress[stakerReg[ii]].length;jj++) {
@@ -128,40 +158,60 @@ contract YourContract is ChainlinkClient{
             }
         }
     }
-    
-    
-    function stake() 
-    public
-    payable {
-      require(msg.value > 0, "Staking amount must be higher than 0");
-      stakers[msg.sender] = true;
-      stakerReg.push(msg.sender);
-      balances[stakingpool] += msg.value; //should normally be msg.sender but easier to put it together into stakingpool
+
+    function averageRelGHG() internal {
+        for(uint16 ii=0; ii<relativeGHG.length; ii++) {
+            averageRelGHGV += relativeGHG[ii];
+        }
+        averageRelGHGV /= relativeGHG.length;
     }
 
-    function balanceOf(address _user) public view returns(uint256) {
-      return balances[_user];
+    /*
+    * If your relative GHG reduction is over the average value you get a reward
+    * paid by the ones under the average. 
+    */
+    function payOrGetPaid() public {
+        averageRelGHG();
+        for(uint256 jj=0; jj<relativeGHG.length;jj++) {
+            if(relativeGHG[jj] < relativeGHGV) {
+                rewarded.push(stakerReg[jj]);
+            }  else {
+                penalized.push(stakerReg[jj]);
+                balance[stakingpool] += balance[penalized[jj]];
+                balance[penalized[jj]] = 0;
+            }
+        }
+        for(uint256 ii=0; jj<rewarded.length;ii++) {
+            balance[rewarded[ii]] += balance[stakingpool]/rewarded.length;
+            //send eth to address ?
+        }
+        balance[stakingpool] = 0;
     }
-
+    
+    /**
+    * Compare GHG values and send them to the winner address
+    * TODO: Collect penalties from the others to pay the winner
+    */
     function compareGHG() public{
-      require(relativeGHG[0] != 0 && relativeGHG[1] != 0, "Wait for Oracle to answer");
-      if(relativeGHG[0] > relativeGHG[1]){ //has a higher relative negative impact on GHG
-        //company1 wins
-        balances[stakerReg[0]] += balanceOf(stakingpool);
-        balances[stakingpool] -= balanceOf(stakingpool);
-        stakerReg[0].transfer(balanceOf(stakerReg[0]));
-        emit PayoutTo(stakerReg[0], balanceOf(stakerReg[0]) );
-        balances[stakerReg[1]] -= balanceOf(stakerReg[1]);
-      } else if(relativeGHG[0] < relativeGHG[1]){
-        //company2 wins
-        balances[stakerReg[1]] += balanceOf(stakingpool);
-        balances[stakingpool] -= balanceOf(stakingpool);
-        stakerReg[1].transfer(balanceOf(stakerReg[1]));
-        emit PayoutTo(stakerReg[1], balanceOf(stakerReg[1]) );
-        balances[stakerReg[1]] -= balanceOf(stakerReg[1]);
-      } else {
-        //do nothing
+      uint256 maxValue = 0;
+      uint256 position = 0;
+      for(uint256 jj=0; jj<relativeGHG.length-1;jj++) {
+          if(relativeGHG[jj] > relativeGHG[jj+1]) {
+              if (relativeGHG[jj] > maxValue) {
+                  maxValue = relativeGHG[jj];
+                  position = jj;
+              }
+          } else {
+              if (relativeGHG[jj+1] > maxValue) {
+                  maxValue = relativeGHG[jj+1];
+                  position = jj+1;
+              }
+          }
       }
+      stakerReg[position].transfer(balanceOf(stakingpool));
     }
 }
 
+
+// AAVE integration missing
+// deposit ETH to get aWETH
