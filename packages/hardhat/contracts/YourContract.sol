@@ -128,7 +128,7 @@ contract YourContract is ChainlinkClient {
       require(msg.value > 0, "Staking amount must be higher than 0");
       stakers[msg.sender] = true;
       stakerReg.push(msg.sender);
-      gateway.depositETH(msg.sender, 0);
+      gateway.depositETH{value: msg.value}(msg.sender, 0);
       balances[msg.sender] += aWETH.balanceOf(msg.sender);
     }
  /*
