@@ -2,9 +2,7 @@ pragma solidity >=0.6 <0.9.0;
 //SPDX-License-Identifier: MIT
 
 import "@chainlink/contracts/src/v0.6/ChainlinkClient.sol";
-//import "@aave/protocol-v2/contracts/misc/WETHGateway.sol";
 import "@aave/protocol-v2/contracts/misc/interfaces/IWETHGateway.sol";
-//import "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
 import "@aave/protocol-v2/contracts/interfaces/IAToken.sol";
 //import "hardhat/console.sol";
 
@@ -23,6 +21,7 @@ contract YourContract is ChainlinkClient {
     address[] public requesters;
     address[] public penalized;
     address[] public rewarded;
+    uint256 public lastAWETHBalance;
 
     mapping(address => uint256) balances;
     mapping(address => uint256[] ) dataToAddress;
@@ -38,6 +37,7 @@ contract YourContract is ChainlinkClient {
       // --- KOVAN --
     IWETHGateway gateway = IWETHGateway(0xf8aC10E65F2073460aAD5f28E1EABE807DC287CF);
     IAToken aWETH = IAToken(0x87b1f4cf9BD63f7BBD3eE1aD04E8F52540349347);
+    IAToken WETH = IAToken(0xd0A1E359811322d97991E03f863a0C30C2cF029C);
     
     constructor() public {
     setPublicChainlinkToken();
@@ -128,9 +128,20 @@ contract YourContract is ChainlinkClient {
       require(msg.value > 0, "Staking amount must be higher than 0");
       stakers[msg.sender] = true;
       stakerReg.push(msg.sender);
-      gateway.depositETH{value: msg.value}(msg.sender, 0);
-      balances[msg.sender] += aWETH.balanceOf(msg.sender);
+      lastAWETHBalance = aWETH.balanceOf(address(this)); //before deposit
+      gateway.depositETH{value: msg.value}(address(this), 0); //Exchanges ETH for aWETH
+      //balances[msg.sender] += aWETH.balanceOf(msg.sender);
+      balances[msg.sender] += aWETH.balanceOf(address(this)) - lastAWETHBalance;
     }
+    
+    
+    /*
+    * returns the balance of aWETH in the account.
+    */
+    function aWethBalance() public view returns(uint256) {
+        return aWETH.balanceOf(msg.sender);
+    }
+    
  /*
     * Get the relative Change of the GHG values.
     * TODO: Set one starting value and take the average of the following. Eventually needs to be signed integer
@@ -174,7 +185,9 @@ contract YourContract is ChainlinkClient {
         }
         for(uint256 ii=0; ii<rewarded.length;ii++) {
             balances[rewarded[ii]] += balances[stakingpool]/rewarded.length;
-            //send eth to address ?
+            aWETH.approve(0xf8aC10E65F2073460aAD5f28E1EABE807DC287CF, type(uint).max); // infinite approval
+            WETH.approve(0xf8aC10E65F2073460aAD5f28E1EABE807DC287CF, type(uint).max); // infinite approval
+            gateway.withdrawETH(balances[rewarded[ii]], rewarded[ii]);
         }
         balances[stakingpool] = 0;
     }
