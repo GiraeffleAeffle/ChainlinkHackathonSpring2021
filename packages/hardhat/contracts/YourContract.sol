@@ -4,7 +4,7 @@ pragma solidity >=0.6 <0.9.0;
 import "@chainlink/contracts/src/v0.6/ChainlinkClient.sol";
 import "@aave/protocol-v2/contracts/misc/interfaces/IWETHGateway.sol";
 import "@aave/protocol-v2/contracts/interfaces/IAToken.sol";
-//import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 //, IAToken
 contract YourContract is ChainlinkClient {
@@ -21,7 +21,7 @@ contract YourContract is ChainlinkClient {
     address[] public requesters;
     address[] public penalized;
     address[] public rewarded;
-    uint256 public lastAWETHBalance;
+    uint256 public lastAWETHBalance = 0;
 
     mapping(address => uint256) balances;
     mapping(address => uint256[] ) dataToAddress;
@@ -112,6 +112,19 @@ contract YourContract is ChainlinkClient {
       SetData(msg.sender, _data);
     }
 
+    
+    /*
+    * TESTING FUNCTION
+    */
+    function prepareData() public {
+        stakerReg.push(0xD8631E88f5A330FAF7424Def118A389E8405895c);
+        stakerReg.push(0x497f35b5a2859343CdAA98aeDb7605B2c46136d7);
+        dataToAddress[0xD8631E88f5A330FAF7424Def118A389E8405895c].push(100);
+        dataToAddress[0xD8631E88f5A330FAF7424Def118A389E8405895c].push(50);
+        dataToAddress[0x497f35b5a2859343CdAA98aeDb7605B2c46136d7].push(100);
+        dataToAddress[0x497f35b5a2859343CdAA98aeDb7605B2c46136d7].push(80);
+    }
+
     /**
     * Get data. Only with caller address.
      */
@@ -139,7 +152,7 @@ contract YourContract is ChainlinkClient {
     * returns the balance of aWETH in the account.
     */
     function aWethBalance() public view returns(uint256) {
-        return aWETH.balanceOf(msg.sender);
+        return aWETH.balanceOf(address(this));
     }
     
  /*
@@ -147,8 +160,8 @@ contract YourContract is ChainlinkClient {
     * TODO: Set one starting value and take the average of the following. Eventually needs to be signed integer
     */
     function getRelChange() public {
-        for (uint8 ii= 0;ii<stakerReg.length;ii++) {
-            for (uint8 jj=0; jj<dataToAddress[stakerReg[ii]].length;jj++) {
+        for (uint256 ii= 0;ii<stakerReg.length;ii++) {
+            for (uint256 jj=0; jj<dataToAddress[stakerReg[ii]].length;jj++) {
                 if (jj == 0) {
                     relativeGHG[ii] = dataToAddress[stakerReg[ii]][jj]; // expecting that second value is lower than first
                     emit GetRelChange(relativeGHG[ii]);
@@ -175,7 +188,7 @@ contract YourContract is ChainlinkClient {
     function payOrGetPaid() public {
         averageRelGHG();
         for(uint256 jj=0; jj<relativeGHG.length;jj++) {
-            if(relativeGHG[jj] < averageRelGHGV) {
+            if(relativeGHG[jj] > averageRelGHGV) {
                 rewarded.push(stakerReg[jj]);
             }  else {
                 penalized.push(stakerReg[jj]);
@@ -185,9 +198,10 @@ contract YourContract is ChainlinkClient {
         }
         for(uint256 ii=0; ii<rewarded.length;ii++) {
             balances[rewarded[ii]] += balances[stakingpool]/rewarded.length;
-            aWETH.approve(0xf8aC10E65F2073460aAD5f28E1EABE807DC287CF, type(uint).max); // infinite approval
-            WETH.approve(0xf8aC10E65F2073460aAD5f28E1EABE807DC287CF, type(uint).max); // infinite approval
+            aWETH.approve(0xf8aC10E65F2073460aAD5f28E1EABE807DC287CF, type(uint).max); // infinite approval / not sure if this works
+            WETH.approve(0xf8aC10E65F2073460aAD5f28E1EABE807DC287CF, type(uint).max); 
             gateway.withdrawETH(balances[rewarded[ii]], rewarded[ii]);
+            emit PayoutTo(rewarded[ii], balances[rewarded[ii]]);
         }
         balances[stakingpool] = 0;
     }
@@ -196,7 +210,7 @@ contract YourContract is ChainlinkClient {
     * Compare GHG values and send them to the winner address
     * TODO: Collect penalties from the others to pay the winner
     * TODO: Events
-    */
+    
     function compareGHG() public{
       uint256 maxValue = 0;
       uint256 position = 0;
@@ -215,8 +229,5 @@ contract YourContract is ChainlinkClient {
       }
       stakerReg[position].transfer(balances[stakingpool]);
     }
+    */
 }
-
-
-// AAVE integration missing
-// deposit ETH to get aWETH
