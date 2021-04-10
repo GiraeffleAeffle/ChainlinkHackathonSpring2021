@@ -366,19 +366,6 @@
   },
   {
     "inputs": [],
-    "name": "stakingpool",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "withdrawLink",
     "outputs": [],
     "stateMutability": "nonpayable",

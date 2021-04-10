@@ -162,7 +162,7 @@ contract YourContract is ChainlinkClient {
         for (uint256 ii= 0;ii<stakerReg.length;ii++) {
             for (uint256 jj=0; jj<dataToAddress[stakerReg[ii]].length;jj++) {
                 if (jj == 0) {
-                    relativeGHG[ii] = dataToAddress[stakerReg[ii]][jj]; // expecting that second value is lower than first
+                    relativeGHG.push(dataToAddress[stakerReg[ii]][jj]); // expecting that second value is lower than first
                     emit GetRelChange(relativeGHG[ii]);
                 } else {
                     relativeGHG[ii] -= dataToAddress[stakerReg[ii]][jj]; // expecting that second value is lower than first
