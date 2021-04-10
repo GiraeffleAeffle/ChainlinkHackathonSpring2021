@@ -4,7 +4,7 @@ pragma solidity >=0.6 <0.9.0;
 import "@chainlink/contracts/src/v0.6/ChainlinkClient.sol";
 import "@aave/protocol-v2/contracts/misc/interfaces/IWETHGateway.sol";
 import "@aave/protocol-v2/contracts/interfaces/IAToken.sol";
-import "hardhat/console.sol";
+//import "hardhat/console.sol";
 
 //, IAToken
 contract YourContract is ChainlinkClient {
@@ -14,7 +14,6 @@ contract YourContract is ChainlinkClient {
     uint256 private fee;
   
     address payable[] public stakerReg;
-    address public stakingpool = 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4;
     uint256[] public oracleData;
     uint256[] public relativeGHG;
     uint256 public averageRelGHGV;
@@ -192,18 +191,18 @@ contract YourContract is ChainlinkClient {
                 rewarded.push(stakerReg[jj]);
             }  else {
                 penalized.push(stakerReg[jj]);
-                balances[stakingpool] += balances[penalized[jj]];
+                balances[address(this)] += balances[penalized[jj]];
                 balances[penalized[jj]] = 0;
             }
         }
         for(uint256 ii=0; ii<rewarded.length;ii++) {
-            balances[rewarded[ii]] += balances[stakingpool]/rewarded.length;
+            balances[rewarded[ii]] += balances[address(this)]/rewarded.length;
             aWETH.approve(0xf8aC10E65F2073460aAD5f28E1EABE807DC287CF, type(uint).max); // infinite approval / not sure if this works
             WETH.approve(0xf8aC10E65F2073460aAD5f28E1EABE807DC287CF, type(uint).max); 
             gateway.withdrawETH(balances[rewarded[ii]], rewarded[ii]);
             emit PayoutTo(rewarded[ii], balances[rewarded[ii]]);
         }
-        balances[stakingpool] = 0;
+        balances[address(this)] = 0;
     }
     
     /**

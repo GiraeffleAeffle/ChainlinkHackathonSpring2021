@@ -140,13 +140,6 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "compareGHG",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -240,6 +233,13 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "prepareData",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
