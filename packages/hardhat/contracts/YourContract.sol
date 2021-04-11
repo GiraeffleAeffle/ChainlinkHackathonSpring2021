@@ -44,7 +44,90 @@ contract YourContract is ChainlinkClient {
     jobId = "c7dd72ca14b44f0c9b6cfcd4b7ec0a2c";
     fee = 0.1 * 10 ** 18; // 0.1 LINK
   }
-
+  
+   /**
+    * Stake ETH
+     */
+    function stake() 
+    public
+    payable {
+      require(msg.value > 0, "Staking amount must be higher than 0");
+      stakers[msg.sender] = true;
+      stakerReg.push(msg.sender);
+      lastAWETHBalance = aWETH.balanceOf(address(this)); //before deposit
+      gateway.depositETH{value: msg.value}(address(this), 0); //Exchanges ETH for aWETH
+      //balances[msg.sender] += aWETH.balanceOf(msg.sender);
+      balances[msg.sender] += aWETH.balanceOf(address(this)) - lastAWETHBalance;
+    }
+    
+    
+    /**
+    * Set "oracle" data. 
+    * Just for testing purpose without the need to use an oracle.
+     */
+    function setData(uint256 _data) public {
+      dataToAddress[msg.sender].push(_data);
+      SetData(msg.sender, _data);
+    }
+    
+    /*
+    * Get the relative Change of the GHG values.
+    * TODO: Set one starting value and take the average of the following. Eventually needs to be signed integer
+    */
+    function getRelChange() public {
+        for (uint256 ii= 0;ii<stakerReg.length;ii++) {
+            for (uint256 jj=0; jj<dataToAddress[stakerReg[ii]].length;jj++) {
+                if (jj == 0) {
+                    relativeGHG.push(dataToAddress[stakerReg[ii]][jj]); // expecting that second value is lower than first
+                    emit GetRelChange(relativeGHG[ii]);
+                } else {
+                    relativeGHG[ii] -= dataToAddress[stakerReg[ii]][jj]; // expecting that second value is lower than first
+                    emit GetRelChange(relativeGHG[ii]);    
+                }
+            }
+        }
+    }
+    
+    /*
+    * If your relative GHG reduction is over the average value you get a reward
+    * paid by the ones under the average. 
+    * TODO: Events
+    */
+    function RewardPenalize() public {
+        averageRelGHG();
+        for(uint256 jj=0; jj<relativeGHG.length;jj++) {
+            if(relativeGHG[jj] > averageRelGHGV) { // Still something wrong // !!!!! relativeGHG[jj] > averageRelGHGV !!!!!
+                rewarded.push(stakerReg[jj]);
+            }  else {
+                penalized.push(stakerReg[jj]);
+            }
+        }
+    }
+    
+    
+    function penalize() public {
+        for(uint256 ii=0; ii<penalized.length;ii++) {
+            balances[address(this)] += balances[penalized[ii]];
+            balances[penalized[ii]] = 0;
+        }
+    }
+    
+    
+    function approveERC20s() public {
+        aWETH.approve(0xf8aC10E65F2073460aAD5f28E1EABE807DC287CF, type(uint).max); // infinite approval / not sure if this works
+        WETH.approve(0xf8aC10E65F2073460aAD5f28E1EABE807DC287CF, type(uint).max); 
+    }
+    
+    function payOut() public {
+        for(uint256 ii=0; ii<rewarded.length;ii++) {
+            if (rewarded[ii] == msg.sender) {
+                balances[msg.sender] += balances[address(this)]/rewarded.length;
+                gateway.withdrawETH(balances[msg.sender], msg.sender);
+                balances[address(this)] -= balances[address(this)]/rewarded.length;
+            }
+        }
+    }
+    
      /**
      * Create a Chainlink request to retrieve API response, find the target
      * data, then multiply by 1000000000000000000 (to remove decimal places from data).
@@ -102,15 +185,6 @@ contract YourContract is ChainlinkClient {
         require(linkToken.transfer(msg.sender, linkToken.balanceOf(address(this))), "Unable to transfer");
     }
 
-    /**
-    * Set "oracle" data. 
-    * Just for testing purpose without the need to use an oracle.
-     */
-    function setData(uint256 _data) public {
-      dataToAddress[msg.sender].push(_data);
-      SetData(msg.sender, _data);
-    }
-
     
     /*
     * TESTING FUNCTION
@@ -131,21 +205,6 @@ contract YourContract is ChainlinkClient {
         return dataToAddress[msg.sender];
     }
     
-    /**
-    * Stake ETH
-     */
-    function stake() 
-    public
-    payable {
-      require(msg.value > 0, "Staking amount must be higher than 0");
-      stakers[msg.sender] = true;
-      stakerReg.push(msg.sender);
-      lastAWETHBalance = aWETH.balanceOf(address(this)); //before deposit
-      gateway.depositETH{value: msg.value}(address(this), 0); //Exchanges ETH for aWETH
-      //balances[msg.sender] += aWETH.balanceOf(msg.sender);
-      balances[msg.sender] += aWETH.balanceOf(address(this)) - lastAWETHBalance;
-    }
-    
     
     /*
     * returns the balance of aWETH in the account.
@@ -154,54 +213,12 @@ contract YourContract is ChainlinkClient {
         return aWETH.balanceOf(address(this));
     }
     
- /*
-    * Get the relative Change of the GHG values.
-    * TODO: Set one starting value and take the average of the following. Eventually needs to be signed integer
-    */
-    function getRelChange() public {
-        for (uint256 ii= 0;ii<stakerReg.length;ii++) {
-            for (uint256 jj=0; jj<dataToAddress[stakerReg[ii]].length;jj++) {
-                if (jj == 0) {
-                    relativeGHG.push(dataToAddress[stakerReg[ii]][jj]); // expecting that second value is lower than first
-                    emit GetRelChange(relativeGHG[ii]);
-                } else {
-                    relativeGHG[ii] -= dataToAddress[stakerReg[ii]][jj]; // expecting that second value is lower than first
-                    emit GetRelChange(relativeGHG[ii]);    
-                }
-            }
-        }
-    }
 
     function averageRelGHG() internal {
         for(uint16 ii=0; ii<relativeGHG.length; ii++) {
             averageRelGHGV += relativeGHG[ii];
         }
         averageRelGHGV /= relativeGHG.length;
-    }
-
-    /*
-    * If your relative GHG reduction is over the average value you get a reward
-    * paid by the ones under the average. 
-    * TODO: Events
-    */
-    function payOrGetPaid() public {
-        averageRelGHG();
-        for(uint256 jj=0; jj<relativeGHG.length;jj++) {
-            if(relativeGHG[jj] < averageRelGHGV) { // Still something wrong // !!!!! relativeGHG[jj] > averageRelGHGV !!!!!
-                rewarded.push(stakerReg[jj]);
-            }  else {
-                penalized.push(stakerReg[jj]);
-                balances[address(this)] += balances[penalized[jj]];
-                balances[penalized[jj]] = 0;
-            }
-        }
-        for(uint256 ii=0; ii<rewarded.length;ii++) {
-            balances[rewarded[ii]] += balances[address(this)]/rewarded.length;
-            aWETH.approve(0xf8aC10E65F2073460aAD5f28E1EABE807DC287CF, type(uint).max); // infinite approval / not sure if this works
-            WETH.approve(0xf8aC10E65F2073460aAD5f28E1EABE807DC287CF, type(uint).max); 
-            gateway.withdrawETH(balances[rewarded[ii]], rewarded[ii]);
-        }
-        balances[address(this)] = 0;
     }
     
     /**

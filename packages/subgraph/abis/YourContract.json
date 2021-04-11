@@ -115,6 +115,13 @@
   },
   {
     "inputs": [],
+    "name": "RewardPenalize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "aWethBalance",
     "outputs": [
       {
@@ -124,6 +131,13 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "approveERC20s",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -211,7 +225,14 @@
   },
   {
     "inputs": [],
-    "name": "payOrGetPaid",
+    "name": "payOut",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "penalize",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
