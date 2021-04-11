@@ -68,3 +68,30 @@ cd scaffold-eth
 yarn deploy
 
 ```
+> In the browser app
+
+```bash
+stake()
+1. First both will stake ETH in the smart contract which will be send to Aave to be exchanged for aWETH.
+
+setData() OR requestVolumeData() and requesterToData()
+
+2. After that the data will be requested from the external API that we chose, by chainlink. However, the API only refreshes every hour. That’s why I will set GHG values manually. In this case I will set a GHG value of 100 and the following 50 for company A and values of 100 and 80 for company B. 
+
+GetRelChange()
+
+3. Next the relative change of the GHG data will be calculated, which is 50 for company A and 20 for company B. 
+
+rewardPenalize()
+
+4. After that the average of the GHG data will be taken in this case 35 to form a threshold to determine which companies will be penalized and which ones will be rewarded. The stake of the penalized company will be kept (Company B).
+
+approveERC20s()
+
+5. Next the ERC20 Tokens like the aWETH and WETH have to be approved by the rewarded company B, so the WETHGateway  is allowed to use them.
+
+payOut()
+
+6. Finally the stake of the penalized company B and the one from the rewarded company A is paid out to the rewarded company A.
+
+```
