@@ -115,13 +115,6 @@
   },
   {
     "inputs": [],
-    "name": "RewardPenalize",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "aWethBalance",
     "outputs": [
       {
@@ -192,19 +185,6 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "lastAWETHBalance",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -226,13 +206,6 @@
   {
     "inputs": [],
     "name": "payOut",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "penalize",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -309,22 +282,10 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "requesters",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
+    "inputs": [],
+    "name": "rewardPenalize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

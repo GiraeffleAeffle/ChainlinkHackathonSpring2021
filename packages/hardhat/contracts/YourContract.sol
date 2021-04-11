@@ -13,14 +13,13 @@ contract YourContract is ChainlinkClient {
     uint256 private fee;
   
     address payable[] public stakerReg;
-    //address public stakingpool = 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4;
     uint256[] public oracleData;
     uint256[] public relativeGHG;
     uint256 public averageRelGHGV;
-    address[] public requesters;
+    address[] requesters;
     address[] public penalized;
     address[] public rewarded;
-    uint256 public lastAWETHBalance = 0;
+    uint256 lastAWETHBalance = 0;
 
     mapping(address => uint256) balances;
     mapping(address => uint256[] ) dataToAddress;
@@ -46,7 +45,7 @@ contract YourContract is ChainlinkClient {
   }
   
    /**
-    * Stake ETH
+    * Stake ETH and deposit into Aave to get back aWETH
      */
     function stake() 
     public
@@ -56,7 +55,6 @@ contract YourContract is ChainlinkClient {
       stakerReg.push(msg.sender);
       lastAWETHBalance = aWETH.balanceOf(address(this)); //before deposit
       gateway.depositETH{value: msg.value}(address(this), 0); //Exchanges ETH for aWETH
-      //balances[msg.sender] += aWETH.balanceOf(msg.sender);
       balances[msg.sender] += aWETH.balanceOf(address(this)) - lastAWETHBalance;
     }
     
@@ -89,11 +87,12 @@ contract YourContract is ChainlinkClient {
     }
     
     /*
-    * If your relative GHG reduction is over the average value you get a reward
+    * Calculates the relative GHG. 
+    * If the relative GHG reduction of a company is over the average value you get a reward
     * paid by the ones under the average. 
     * TODO: Events
     */
-    function RewardPenalize() public {
+    function rewardPenalize() public {
         averageRelGHG();
         for(uint256 jj=0; jj<relativeGHG.length;jj++) {
             if(relativeGHG[jj] > averageRelGHGV) { // Still something wrong // !!!!! relativeGHG[jj] > averageRelGHGV !!!!!
@@ -102,22 +101,30 @@ contract YourContract is ChainlinkClient {
                 penalized.push(stakerReg[jj]);
             }
         }
+        penalize();
     }
     
-    
-    function penalize() public {
+    /*
+    * Take the stake of the penalized company.
+    */
+    function penalize() internal {
         for(uint256 ii=0; ii<penalized.length;ii++) {
             balances[address(this)] += balances[penalized[ii]];
             balances[penalized[ii]] = 0;
         }
     }
     
-    
+    /*
+    * Approve aWETH and WETH that the Aave gateway contract can spend aWETH and withdraw ETH into the contract
+    */
     function approveERC20s() public {
         aWETH.approve(0xf8aC10E65F2073460aAD5f28E1EABE807DC287CF, type(uint).max); // infinite approval / not sure if this works
         WETH.approve(0xf8aC10E65F2073460aAD5f28E1EABE807DC287CF, type(uint).max); 
     }
     
+    /*
+    * Pay out ETH to the rewarded companies
+    */
     function payOut() public {
         for(uint256 ii=0; ii<rewarded.length;ii++) {
             if (rewarded[ii] == msg.sender) {
@@ -213,7 +220,9 @@ contract YourContract is ChainlinkClient {
         return aWETH.balanceOf(address(this));
     }
     
-
+    /*
+    * Calculates the average relative GHG data to determine a threshold which companies are rewarded or penalized.
+    */
     function averageRelGHG() internal {
         for(uint16 ii=0; ii<relativeGHG.length; ii++) {
             averageRelGHGV += relativeGHG[ii];
