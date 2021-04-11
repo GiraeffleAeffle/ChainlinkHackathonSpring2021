@@ -131,6 +131,8 @@ contract YourContract is ChainlinkClient {
                 balances[msg.sender] += balances[address(this)]/rewarded.length;
                 gateway.withdrawETH(balances[msg.sender], msg.sender);
                 balances[address(this)] -= balances[address(this)]/rewarded.length;
+                emit PayoutTo(msg.sender, balances[msg.sender]);
+                balances[msg.sender] = 0;
             }
         }
     }
