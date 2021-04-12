@@ -46,7 +46,7 @@ Extends all ideas should time allow
 ```bash
 git clone https://github.com/GiraeffleAeffle/ChainlinkHackathonSpring2021.git
 
-cd scaffold-eth
+cd ChainlinkHackathonSpring2021
 ```
 
 ```bash
@@ -64,7 +64,7 @@ yarn start
 > in a second terminal window:
 
 ```bash
-cd scaffold-eth
+cd ChainlinkHackathonSpring2021
 yarn deploy
 
 ```
